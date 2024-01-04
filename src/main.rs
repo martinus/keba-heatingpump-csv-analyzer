@@ -4,6 +4,7 @@ use plotly::{BoxPlot, Plot};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::str::FromStr;
 use std::time::Instant;
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -12,6 +13,22 @@ where
 {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+pub fn clamp(val: usize, min: usize, max: usize) -> usize {
+    if val < min {
+        min
+    } else if val > max {
+        max
+    } else {
+        val
+    }
+}
+
+fn percentile(vec: &Vec<f64>, p: f64) -> f64 {
+    let pos = vec.len() as f64 * p + 0.5;
+    let idx = clamp(pos as usize, 0, vec.len());
+    return vec[idx];
 }
 
 fn main() {
@@ -34,10 +51,12 @@ fn main() {
     let mut room_set_temp_1 = Metric::new();
     let mut room_temp_0 = Metric::new();
     let mut room_temp_1 = Metric::new();
-
+    let mut electric_power = Metric::new();
     let mut heat_power = Metric::new();
 
     let mut date_time_prev: Option<NaiveDateTime> = None;
+
+    let mut outdoor_temperatures: Vec<f64> = Vec::new();
 
     if let Ok(lines) = read_lines(filename) {
         for line in lines.flatten() {
@@ -61,12 +80,15 @@ fn main() {
 
             if month_id != current_month_id {
                 if temp_outdoor.count() > 0 {
-                    let avg_power = heat_power.avg();
-                    let seconds = heat_power.count() as f64;
-                    let kwh = (avg_power / 1000.0) * (seconds / (60.0 * 60.0));
+                    let watt_seconds_to_kwh = 1.0 / (1000.0 * 60.0 * 60.0);
+                    let electricity_kwh = electric_power.sum() * watt_seconds_to_kwh;
+                    let heat_kw = heat_power.sum() * watt_seconds_to_kwh;
+                    let cop = heat_power.sum() / electric_power.sum();
+
+                    outdoor_temperatures.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
                     println!(
-                        "{:4}-{:02}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Stromverbrauch: {:5.1} kWh",
+                        "{:4}-{:02}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Energie: {:5.1} kWh Strom, {:6.1} kWh Wärme => COP = {:2.1} | percentiles: {:5.1} {:5.1} {:5.1} {:5.1} {:5.1}",
                         current_month_id / 100,
                         current_month_id % 100,
                         temp_outdoor.avg(),
@@ -76,7 +98,14 @@ fn main() {
                         room_temp_1.avg(),
                         room_set_temp_0.avg(),
                         room_temp_0.avg(),
-                        kwh
+                        electricity_kwh,
+                        heat_kw,
+                        cop,
+                        percentile(&outdoor_temperatures, 0.05),
+                        percentile(&outdoor_temperatures, 0.25),
+                        percentile(&outdoor_temperatures, 0.50),
+                        percentile(&outdoor_temperatures, 0.75),
+                        percentile(&outdoor_temperatures, 0.95)
                     );
                 }
 
@@ -86,7 +115,9 @@ fn main() {
                 room_set_temp_1 = Metric::new();
                 room_temp_0 = Metric::new();
                 room_temp_1 = Metric::new();
+                electric_power = Metric::new();
                 heat_power = Metric::new();
+                outdoor_temperatures.clear();
             }
 
             let prev = match date_time_prev {
@@ -98,6 +129,9 @@ fn main() {
             };
 
             let duration_s: u64 = (date_time - prev).num_seconds() as u64;
+            let t = f64::from_str(p[50]).unwrap();
+            outdoor_temperatures.resize(outdoor_temperatures.len() + duration_s as usize, t);
+
             date_time_prev = Some(date_time);
 
             temp_outdoor.add_times(p[50], duration_s);
@@ -105,7 +139,8 @@ fn main() {
             room_set_temp_1.add_times(p[192], duration_s);
             room_temp_0.add_times(p[92], duration_s);
             room_temp_1.add_times(p[147], duration_s);
-            heat_power.add_times(p[122], duration_s);
+            electric_power.add_times(p[122], duration_s);
+            heat_power.add_times(p[76], duration_s);
 
             // heatpump[0].HeatPower 76
             // heatCircuit[0].RoomTemp 92

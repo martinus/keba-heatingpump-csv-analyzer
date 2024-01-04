@@ -41,6 +41,10 @@ impl Metric {
         return self.sum / self.count as f64;
     }
 
+    pub fn sum(&self) -> f64 {
+        return self.sum;
+    }
+
     pub fn min(&self) -> f64 {
         return self.min;
     }
