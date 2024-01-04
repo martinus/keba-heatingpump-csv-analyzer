@@ -86,7 +86,7 @@ fn main() {
             // heatCircuit[1].RoomSetTemp 192 // actual temperature set (with offset combined)
             // heatpump[0].ElectricPower 122
             // heatpump[0].PwrCtrl.CalcPower 168
-            println!("{}: power={}", date_time, p[122]);
+            // println!("{}: power={}", date_time, p[122]);
 
             counter += 1;
         }
