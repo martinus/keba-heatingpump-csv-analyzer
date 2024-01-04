@@ -66,8 +66,9 @@ fn main() {
                     let kwh = (avg_power / 1000.0) * (seconds / (60.0 * 60.0));
 
                     println!(
-                        "{}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Stromverbrauch: {:5.1} kWh",
-                        current_month_id,
+                        "{:4}-{:02}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Stromverbrauch: {:5.1} kWh",
+                        current_month_id / 100,
+                        current_month_id % 100,
                         temp_outdoor.avg(),
                         temp_outdoor.min(),
                         temp_outdoor.max(),
