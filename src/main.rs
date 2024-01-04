@@ -1,5 +1,6 @@
 use chrono::{Datelike, NaiveDateTime};
 use heatingpump::Metric;
+use plotly::{BoxPlot, Plot};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -14,6 +15,15 @@ where
 }
 
 fn main() {
+    let mut plot = Plot::new();
+    let trace = BoxPlot::new(vec![0, 1, 2, 3, 4, 5])
+        .box_points(plotly::box_plot::BoxPoints::All)
+        .jitter(0.3)
+        .point_pos(0.0);
+    plot.add_trace(trace);
+
+    plot.write_html("out.html");
+
     let now = Instant::now();
     let filename: &str = "/home/martinus/Documents/KEBA KeEnergy CSV files/2023-05-31T09:54:50 - 2024-01-03T13:12:27.csv";
     let mut counter: u32 = 0;
@@ -26,6 +36,8 @@ fn main() {
     let mut room_temp_1 = Metric::new();
 
     let mut heat_power = Metric::new();
+
+    let mut date_time_prev: Option<NaiveDateTime> = None;
 
     if let Ok(lines) = read_lines(filename) {
         for line in lines.flatten() {
@@ -49,8 +61,12 @@ fn main() {
 
             if month_id != current_month_id {
                 if temp_outdoor.count() > 0 {
+                    let avg_power = heat_power.avg();
+                    let seconds = heat_power.count() as f64;
+                    let kwh = (avg_power / 1000.0) * (seconds / (60.0 * 60.0));
+
                     println!(
-                        "{}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | HeatPower={}",
+                        "{}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Stromverbrauch: {:5.1} kWh",
                         current_month_id,
                         temp_outdoor.avg(),
                         temp_outdoor.min(),
@@ -59,7 +75,7 @@ fn main() {
                         room_temp_1.avg(),
                         room_set_temp_0.avg(),
                         room_temp_0.avg(),
-                        heat_power.avg()
+                        kwh
                     );
                 }
 
@@ -72,12 +88,23 @@ fn main() {
                 heat_power = Metric::new();
             }
 
-            temp_outdoor.add_str(p[50]);
-            room_set_temp_0.add_str(p[60]);
-            room_set_temp_1.add_str(p[192]);
-            room_temp_0.add_str(p[92]);
-            room_temp_1.add_str(p[147]);
-            heat_power.add_str(p[122]);
+            let prev = match date_time_prev {
+                Some(prev) => prev,
+                None => {
+                    date_time_prev = Some(date_time);
+                    continue;
+                }
+            };
+
+            let duration_s: u64 = (date_time - prev).num_seconds() as u64;
+            date_time_prev = Some(date_time);
+
+            temp_outdoor.add_times(p[50], duration_s);
+            room_set_temp_0.add_times(p[60], duration_s);
+            room_set_temp_1.add_times(p[192], duration_s);
+            room_temp_0.add_times(p[92], duration_s);
+            room_temp_1.add_times(p[147], duration_s);
+            heat_power.add_times(p[122], duration_s);
 
             // heatpump[0].HeatPower 76
             // heatCircuit[0].RoomTemp 92

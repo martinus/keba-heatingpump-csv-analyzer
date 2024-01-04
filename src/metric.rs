@@ -17,20 +17,24 @@ impl Metric {
         }
     }
 
-    pub fn add(&mut self, val: f64) {
-        self.count += 1;
-        self.sum += val;
-
+    fn update_min_max(&mut self, val: f64) {
         if val < self.min {
             self.min = val;
         }
-        if (val > self.max) {
+        if val > self.max {
             self.max = val;
         }
     }
 
-    pub fn add_str(&mut self, val: &str) {
-        self.add(f64::from_str(val).unwrap());
+    pub fn add(&mut self, val: &str) {
+        self.add_times(val, 1);
+    }
+
+    pub fn add_times(&mut self, val: &str, count: u64) {
+        let v = f64::from_str(val).unwrap();
+        self.count += count;
+        self.sum += (count as f64) * v;
+        self.update_min_max(v);
     }
 
     pub fn avg(&self) -> f64 {
