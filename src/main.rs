@@ -88,7 +88,7 @@ fn main() {
                     outdoor_temperatures.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
                     println!(
-                        "{:4}-{:02}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Energie: {:5.1} kWh Strom, {:6.1} kWh Wärme => COP = {:2.1} | percentiles: {:5.1} {:5.1} {:5.1} {:5.1} {:5.1}",
+                        "{:4}-{:02}: Außentemperatur: {:4.1}° Durchschnitt, {:4.1}° bis {:4.1}° | Oberhaus: {:4.1}° Soll, {:4.1}° Ist | Unterhaus {:4.1}° Soll, {:4.1}° Ist | Energie: {:5.1} kWh Strom, {:6.1} kWh Wärme => COP = {:4.2} | percentiles: {:5.1} {:5.1} {:5.1} {:5.1} {:5.1}",
                         current_month_id / 100,
                         current_month_id % 100,
                         temp_outdoor.avg(),
