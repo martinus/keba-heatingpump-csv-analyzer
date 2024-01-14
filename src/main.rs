@@ -1,4 +1,4 @@
-use chrono::{Datelike, NaiveDateTime};
+use chrono::{Datelike, NaiveDateTime, Timelike};
 use heatingpump::Metric;
 use plotly::{BoxPlot, Plot};
 use std::fs::File;
@@ -57,6 +57,9 @@ fn main() {
     let mut date_time_prev: Option<NaiveDateTime> = None;
 
     let mut outdoor_temperatures: Vec<f64> = Vec::new();
+    let watt_seconds_to_kwh = 1.0 / (1000.0 * 60.0 * 60.0);
+
+    let mut energy_per_hour: [Metric; 24] = [Metric::new(); 24];
 
     if let Ok(lines) = read_lines(filename) {
         for line in lines.flatten() {
@@ -80,7 +83,6 @@ fn main() {
 
             if month_id != current_month_id {
                 if temp_outdoor.count() > 0 {
-                    let watt_seconds_to_kwh = 1.0 / (1000.0 * 60.0 * 60.0);
                     let electricity_kwh = electric_power.sum() * watt_seconds_to_kwh;
                     let heat_kw = heat_power.sum() * watt_seconds_to_kwh;
                     let cop = heat_power.sum() / electric_power.sum();
@@ -141,6 +143,7 @@ fn main() {
             room_temp_1.add_times(p[147], duration_s);
             electric_power.add_times(p[122], duration_s);
             heat_power.add_times(p[76], duration_s);
+            energy_per_hour[date_time.hour() as usize].add_times(p[122], duration_s);
 
             // heatpump[0].HeatPower 76
             // heatCircuit[0].RoomTemp 92
@@ -154,5 +157,11 @@ fn main() {
             counter += 1;
         }
     }
+
+    for t in energy_per_hour {
+        print!("{:4.1}; ", t.sum() * watt_seconds_to_kwh);
+    }
+    println!("");
+
     println!("num lines={}, took {:.2?}", counter, now.elapsed());
 }

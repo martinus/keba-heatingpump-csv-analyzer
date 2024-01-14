@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+#[derive(Debug, Copy, Clone)]
 pub struct Metric {
     min: f64,
     max: f64,
@@ -8,6 +9,15 @@ pub struct Metric {
 }
 
 impl Metric {
+    fn update_min_max(&mut self, val: f64) {
+        if val < self.min {
+            self.min = val;
+        }
+        if val > self.max {
+            self.max = val;
+        }
+    }
+
     pub fn new() -> Metric {
         Metric {
             min: std::f64::MAX,
@@ -17,13 +27,11 @@ impl Metric {
         }
     }
 
-    fn update_min_max(&mut self, val: f64) {
-        if val < self.min {
-            self.min = val;
-        }
-        if val > self.max {
-            self.max = val;
-        }
+    pub fn reset(&mut self) {
+        self.min = std::f64::MAX;
+        self.max = std::f64::MIN;
+        self.count = 0;
+        self.sum = 0.0;
     }
 
     pub fn add(&mut self, val: &str) {
